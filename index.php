@@ -28,102 +28,314 @@ try {
     die("数据库连接失败: " . $e->getMessage());
 }
 
+// 处理AJAX进度查询
+if (isset($_GET['action']) && $_GET['action'] == 'get_batch_progress') {
+    if (isset($_SESSION['batch_progress'])) {
+        header('Content-Type: application/json');
+        echo json_encode($_SESSION['batch_progress']);
+        exit();
+    } else {
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'idle']);
+        exit();
+    }
+}
+
 // 处理表单提交
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bv_id'])) {
-    $bv_id = trim($_POST['bv_id']);
-    
-    // 验证BV号格式
-    if (preg_match('/^BV[a-zA-Z0-9]{10}$/', $bv_id)) {
-        // 获取视频标签api
-        $tag_api_url = "https://api.bilibili.com/x/tag/archive/tags?bvid=" . $bv_id;
-        $tag_ch = curl_init();
-        curl_setopt($tag_ch, CURLOPT_URL, $tag_api_url);
-        curl_setopt($tag_ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($tag_ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-        $tag_response = curl_exec($tag_ch);
-        curl_close($tag_ch);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 处理单个视频添加
+    if (isset($_POST['bv_id'])) {
+        $bv_id = trim($_POST['bv_id']);
         
-        $tag_data = json_decode($tag_response, true);
-        
-        // 检查标签是否包含需要的字符
-        $has_valid_tag = false;
-        if ($tag_data && $tag_data['code'] === 0 && !empty($tag_data['data'])) {
-            foreach ($tag_data['data'] as $tag) {
-                $tag_name = $tag['tag_name'];
-                if (strpos($tag_name, '哈基米') !== false || strpos($tag_name, '曼波') !== false || strpos($tag_name, '私人音乐') !== false || strpos($tag_name, '赛马娘') !== false || strpos($tag_name, '哈牛魔') !== false || strpos($tag_name, '叮咚鸡') !== false || strpos($tag_name, '活全家') !== false || strpos($tag_name, '胖宝宝') !== false || strpos($tag_name, '小白手套') !== false || strpos($tag_name, '诗歌剧') !== false || strpos($tag_name, '核酸') !== false || strpos($tag_name, '踩踩背') !== false || strpos($tag_name, '东海帝王') !== false || strpos($tag_name, '猫') !== false || strpos($tag_name, '米基哈') !== false || strpos($tag_name, '基米哈') !== false || strpos($tag_name, '耄耋') !== false || strpos($tag_name, '猫爹') !== false || strpos($tag_name, '猫咪') !== false || strpos($tag_name, '哈气') !== false || strpos($tag_name, '应激') !== false || strpos($tag_name, '大狗叫') !== false || strpos($tag_name, '圆头') !== false || strpos($tag_name, '喵星人') !== false || strpos($tag_name, '爱猫tv') !== false || strpos($tag_name, '爱猫') !== false || strpos($tag_name, 'Doro') !== false || strpos($tag_name, '踩背') !== false || strpos($tag_name, '爱猫fm') !== false || strpos($tag_name, '哈基米fm') !== false || strpos($tag_name, '哈吉米') !== false) {
-                        $has_valid_tag = true;
-                        break;
+        // 验证BV号格式
+        if (preg_match('/^BV[a-zA-Z0-9]{10}$/', $bv_id)) {
+            // 获取视频标签api
+            $tag_api_url = "https://api.bilibili.com/x/tag/archive/tags?bvid=" . $bv_id;
+            $tag_ch = curl_init();
+            curl_setopt($tag_ch, CURLOPT_URL, $tag_api_url);
+            curl_setopt($tag_ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($tag_ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            $tag_response = curl_exec($tag_ch);
+            curl_close($tag_ch);
+            
+            $tag_data = json_decode($tag_response, true);
+            
+            // 检查标签是否包含需要的字符
+            $has_valid_tag = false;
+            if ($tag_data && $tag_data['code'] === 0 && !empty($tag_data['data'])) {
+                foreach ($tag_data['data'] as $tag) {
+                    $tag_name = $tag['tag_name'];
+                    if (strpos($tag_name, '哈基米') !== false || strpos($tag_name, '曼波') !== false || strpos($tag_name, '私人音乐') !== false || strpos($tag_name, '赛马娘') !== false || strpos($tag_name, '哈牛魔') !== false || strpos($tag_name, '叮咚鸡') !== false || strpos($tag_name, '活全家') !== false || strpos($tag_name, '胖宝宝') !== false || strpos($tag_name, '小白手套') !== false || strpos($tag_name, '诗歌剧') !== false || strpos($tag_name, '踩踩背') !== false || strpos($tag_name, '东海帝王') !== false || strpos($tag_name, '猫') !== false || strpos($tag_name, '米基哈') !== false || strpos($tag_name, '基米哈') !== false || strpos($tag_name, '大狗叫') !== false || strpos($tag_name, '圆头') !== false || strpos($tag_name, '喵星人') !== false || strpos($tag_name, '爱猫tv') !== false || strpos($tag_name, '爱猫') !== false || strpos($tag_name, '踩背') !== false || strpos($tag_name, '爱猫fm') !== false || strpos($tag_name, '哈基米fm') !== false || strpos($tag_name, '哈吉米') !== false) {
+                            $has_valid_tag = true;
+                            break;
+                    }
                 }
             }
-        }
-        
-        if (!$has_valid_tag) {
-            $_SESSION['error'] = "该视频标签不包含'哈基米、曼波、私人音乐、赛马娘、哈牛魔、叮咚鸡、活全家、胖宝宝、小白手套、诗歌剧、核酸、踩踩背、东海帝王、猫、米基哈、基米哈、耄耋、猫爹、猫咪、哈气、应激、大狗叫、圆头、喵星人、爱猫tv、爱猫、Doro、踩背、爱猫fm、哈基米fm、哈吉米'无法添加！";
-            header("Location: " . $_SERVER['PHP_SELF']);
-            exit();
-        }
-        
-        // 检查是否已存在该BV号
-        try {
-            $checkStmt = $pdo->prepare("SELECT id FROM videos WHERE bv_id = ?");
-            $checkStmt->execute([$bv_id]);
             
-            if ($checkStmt->fetch()) {
-                $_SESSION['error'] = "该视频已存在！";
+            if (!$has_valid_tag) {
+                $_SESSION['error'] = "该视频标签不包含'哈基米、曼波、私人音乐、赛马娘、哈牛魔、叮咚鸡、活全家、胖宝宝、小白手套、诗歌剧、踩踩背、东海帝王、猫、米基哈、基米哈、耄耋、猫爹、猫咪、哈气、大狗叫、圆头、喵星人、爱猫tv、爱猫、踩背、爱猫fm、哈基米fm、哈吉米'无法添加！";
                 header("Location: " . $_SERVER['PHP_SELF']);
                 exit();
             }
-        } catch (PDOException $e) {
-            $_SESSION['error'] = "数据库查询失败: " . $e->getMessage();
-            header("Location: " . $_SERVER['PHP_SELF']);
-            exit();
-        }
-        
-        // 获取视频信息api
-        $api_url = "https://api.bilibili.com/x/web-interface/view?bvid=" . $bv_id;
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $api_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        $data = json_decode($response, true);
-        
-        if ($data && $data['code'] === 0) {
-            $title = $data['data']['title'];
-            $cover_url = str_replace('http://', 'https://', $data['data']['pic']);
             
-            // 获取当前时间（东八区）
-            $current_time = date('Y-m-d H:i:s');
-            
-            // 插入数据库
+            // 检查是否已存在该BV号
             try {
-                $stmt = $pdo->prepare("INSERT INTO videos (bv_id, title, cover_url, created_at) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$bv_id, $title, $cover_url, $current_time]);
+                $checkStmt = $pdo->prepare("SELECT id FROM videos WHERE bv_id = ?");
+                $checkStmt->execute([$bv_id]);
                 
-                // 设置成功消息并重定向
-                $_SESSION['success'] = "视频添加成功，建议刷新网页";
+                if ($checkStmt->fetch()) {
+                    $_SESSION['error'] = "该视频已存在！";
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                    exit();
+                }
+            } catch (PDOException $e) {
+                $_SESSION['error'] = "数据库查询失败: " . $e->getMessage();
                 header("Location: " . $_SERVER['PHP_SELF']);
                 exit();
-            } catch (PDOException $e) {
-                // 捕获唯一约束错误
-                if ($e->getCode() == 23000) {
-                    $_SESSION['error'] = "该视频已存在！";
-                } else {
-                    $_SESSION['error'] = "数据库错误: " . $e->getMessage();
+            }
+            
+            // 获取视频信息api
+            $api_url = "https://api.bilibili.com/x/web-interface/view?bvid=" . $bv_id;
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $api_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            $response = curl_exec($ch);
+            curl_close($ch);
+            
+            $data = json_decode($response, true);
+            
+            if ($data && $data['code'] === 0) {
+                $title = $data['data']['title'];
+                $cover_url = str_replace('http://', 'https://', $data['data']['pic']);
+                
+                // 获取当前时间（东八区）
+                $current_time = date('Y-m-d H:i:s');
+                
+                // 插入数据库
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO videos (bv_id, title, cover_url, created_at) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$bv_id, $title, $cover_url, $current_time]);
+                    
+                    // 设置成功消息并重定向
+                    $_SESSION['success'] = "视频添加成功，建议刷新网页";
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                    exit();
+                } catch (PDOException $e) {
+                    // 捕获唯一约束错误
+                    if ($e->getCode() == 23000) {
+                        $_SESSION['error'] = "该视频已存在！";
+                    } else {
+                        $_SESSION['error'] = "数据库错误: " . $e->getMessage();
+                    }
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                    exit();
                 }
+            } else {
+                $_SESSION['error'] = "无法获取视频信息，请检查BV号是否正确";
                 header("Location: " . $_SERVER['PHP_SELF']);
                 exit();
             }
         } else {
-            $_SESSION['error'] = "无法获取视频信息，请检查BV号是否正确";
+            $_SESSION['error'] = "无效的BV号格式，请以BV开头并包含10个字符（如：BV1gRTqzdERJ）";
             header("Location: " . $_SERVER['PHP_SELF']);
             exit();
         }
-    } else {
-        $_SESSION['error'] = "无效的BV号格式，请以BV开头并包含10个字符（如：BV1gRTqzdERJ）";
-        header("Location: " . $_SERVER['PHP_SELF']);
+    }
+    
+    // 处理收藏夹批量添加
+    if (isset($_POST['favorite_id'])) {
+        $favorite_id = trim($_POST['favorite_id']);
+        
+        // 从输入中提取收藏夹ID
+        if (preg_match('/fid=(\d+)/', $favorite_id, $matches)) {
+            $favorite_id = $matches[1];
+        } elseif (!is_numeric($favorite_id)) {
+            $_SESSION['error'] = "无效的收藏夹ID格式";
+            header("Location: " . $_SERVER['PHP_SELF']);
+            exit();
+        }
+        
+        // 初始化进度信息
+        $_SESSION['batch_progress'] = [
+            'status' => 'processing',
+            'total' => 0,
+            'processed' => 0,
+            'added' => 0,
+            'skipped' => 0,
+            'errors' => 0,
+            'current_video' => '',
+            'message' => '开始获取收藏夹信息...'
+        ];
+        
+        // 获取收藏夹信息，循环处理所有页面
+        $page = 1;
+        $has_more = true;
+        $all_media = [];
+        
+        while ($has_more) {
+            $_SESSION['batch_progress']['message'] = "正在获取第 {$page} 页收藏夹内容...";
+            session_write_close(); // 释放session，允许其他请求读取进度
+            session_start();
+            
+            // 获取收藏夹api
+            $favorite_api_url = "https://api.bilibili.com/x/v3/fav/resource/list?media_id=" . $favorite_id . "&pn=" . $page . "&ps=20";
+            $favorite_ch = curl_init();
+            curl_setopt($favorite_ch, CURLOPT_URL, $favorite_api_url);
+            curl_setopt($favorite_ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($favorite_ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            $favorite_response = curl_exec($favorite_ch);
+            curl_close($favorite_ch);
+            
+            $favorite_data = json_decode($favorite_response, true);
+            
+            if ($favorite_data && $favorite_data['code'] === 0 && !empty($favorite_data['data']['medias'])) {
+                $all_media = array_merge($all_media, $favorite_data['data']['medias']);
+                $has_more = $favorite_data['data']['has_more'] == 1;
+                $page++;
+                
+                // 添加页面之间的延迟
+                usleep(1000000); // 1秒
+            } else {
+                $has_more = false;
+                if ($page == 1) {
+                    $_SESSION['batch_progress']['status'] = 'error';
+                    $_SESSION['batch_progress']['message'] = "无法获取收藏夹信息或收藏夹为空";
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                    exit();
+                }
+            }
+        }
+        
+        // 更新总视频数
+        $_SESSION['batch_progress']['total'] = count($all_media);
+        $_SESSION['batch_progress']['message'] = "共找到 {$_SESSION['batch_progress']['total']} 个视频，开始处理...";
+        session_write_close();
+        session_start();
+        
+        $added_count = 0;
+        $skipped_count = 0;
+        $error_count = 0;
+        
+        foreach ($all_media as $index => $media) {
+            $current_number = $index + 1;
+            $_SESSION['batch_progress']['processed'] = $current_number;
+            $_SESSION['batch_progress']['current_video'] = $media['title'] ?? '未知视频';
+            $_SESSION['batch_progress']['message'] = "正在处理第 {$current_number}/{$_SESSION['batch_progress']['total']} 个视频: " . ($media['title'] ?? '未知视频');
+            session_write_close();
+            session_start();
+            
+            if ($media['type'] != 2) { // 只处理视频类型
+                $skipped_count++;
+                $_SESSION['batch_progress']['skipped'] = $skipped_count;
+                continue;
+            }
+            
+            $bv_id = $media['bv_id'];
+            
+            // 检查是否已存在该BV号
+            try {
+                $checkStmt = $pdo->prepare("SELECT id FROM videos WHERE bv_id = ?");
+                $checkStmt->execute([$bv_id]);
+                
+                if ($checkStmt->fetch()) {
+                    $skipped_count++;
+                    $_SESSION['batch_progress']['skipped'] = $skipped_count;
+                    $_SESSION['batch_progress']['message'] = "跳过已存在的视频: {$bv_id}";
+                    session_write_close();
+                    session_start();
+                    continue;
+                }
+            } catch (PDOException $e) {
+                $error_count++;
+                $_SESSION['batch_progress']['errors'] = $error_count;
+                $_SESSION['batch_progress']['message'] = "数据库查询失败: {$bv_id}";
+                session_write_close();
+                session_start();
+                continue;
+            }
+            
+            // 获取视频标签api
+            $tag_api_url = "https://api.bilibili.com/x/tag/archive/tags?bvid=" . $bv_id;
+            $tag_ch = curl_init();
+            curl_setopt($tag_ch, CURLOPT_URL, $tag_api_url);
+            curl_setopt($tag_ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($tag_ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            $tag_response = curl_exec($tag_ch);
+            curl_close($tag_ch);
+            
+            $tag_data = json_decode($tag_response, true);
+            
+            // 检查标签是否包含需要的字符
+            $has_valid_tag = false;
+            if ($tag_data && $tag_data['code'] === 0 && !empty($tag_data['data'])) {
+                foreach ($tag_data['data'] as $tag) {
+                    $tag_name = $tag['tag_name'];
+                    if (strpos($tag_name, '哈基米') !== false || strpos($tag_name, '曼波') !== false || strpos($tag_name, '私人音乐') !== false || strpos($tag_name, '赛马娘') !== false || strpos($tag_name, '哈牛魔') !== false || strpos($tag_name, '叮咚鸡') !== false || strpos($tag_name, '活全家') !== false || strpos($tag_name, '胖宝宝') !== false || strpos($tag_name, '小白手套') !== false || strpos($tag_name, '诗歌剧') !== false || strpos($tag_name, '踩踩背') !== false || strpos($tag_name, '东海帝王') !== false || strpos($tag_name, '猫') !== false || strpos($tag_name, '米基哈') !== false || strpos($tag_name, '基米哈') !== false || strpos($tag_name, '耄耋') !== false || strpos($tag_name, '猫爹') !== false || strpos($tag_name, '猫咪') !== false || strpos($tag_name, '哈气') !== false || strpos($tag_name, '大狗叫') !== false || strpos($tag_name, '圆头') !== false || strpos($tag_name, '喵星人') !== false || strpos($tag_name, '爱猫tv') !== false || strpos($tag_name, '爱猫') !== false || strpos($tag_name, '踩背') !== false || strpos($tag_name, '爱猫fm') !== false || strpos($tag_name, '哈基米fm') !== false || strpos($tag_name, '哈吉米') !== false) {
+                                    $has_valid_tag = true;
+                                    break;
+                    }
+                }
+            }
+            
+            if (!$has_valid_tag) {
+                $skipped_count++;
+                $_SESSION['batch_progress']['skipped'] = $skipped_count;
+                $_SESSION['batch_progress']['message'] = "跳过标签不符合要求的视频: {$bv_id}";
+                session_write_close();
+                session_start();
+                continue;
+            }
+            
+            // 获取视频详细信息api
+            $api_url = "https://api.bilibili.com/x/web-interface/view?bvid=" . $bv_id;
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $api_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            $response = curl_exec($ch);
+            curl_close($ch);
+            
+            $data = json_decode($response, true);
+            
+            if ($data && $data['code'] === 0) {
+                $title = $data['data']['title'];
+                $cover_url = str_replace('http://', 'https://', $data['data']['pic']);
+                
+                // 获取当前时间（东八区）
+                $current_time = date('Y-m-d H:i:s');
+                
+                // 插入数据库
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO videos (bv_id, title, cover_url, created_at) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$bv_id, $title, $cover_url, $current_time]);
+                    $added_count++;
+                    $_SESSION['batch_progress']['added'] = $added_count;
+                    $_SESSION['batch_progress']['message'] = "成功添加: {$title}";
+                    session_write_close();
+                    session_start();
+                } catch (PDOException $e) {
+                    $error_count++;
+                    $_SESSION['batch_progress']['errors'] = $error_count;
+                    $_SESSION['batch_progress']['message'] = "数据库插入失败: {$title}";
+                    session_write_close();
+                    session_start();
+                }
+            } else {
+                $error_count++;
+                $_SESSION['batch_progress']['errors'] = $error_count;
+                $_SESSION['batch_progress']['message'] = "获取视频信息失败: {$bv_id}";
+                session_write_close();
+                session_start();
+            }
+            
+            // 添加延迟，避免请求过于频繁
+            usleep(500000); // 0.5秒
+        }
+        
+        // 完成处理
+        $_SESSION['batch_progress']['status'] = 'completed';
+        $_SESSION['batch_progress']['message'] = "批量添加完成！成功添加: $added_count 个视频, 跳过: $skipped_count 个视频, 错误: $error_count 个视频";
         exit();
     }
 }
@@ -221,7 +433,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_total') {
     <link rel="stylesheet" href="css/mdui.min.css"><!--引入mdui的css-->
     <link rel="stylesheet" href="css/index_index.css"><!--引入自己写的css-->
     <meta name="keywords" content="咪友之家">
-    <meta name="description" content="哈基米,曼波,鬼畜,私人音乐,赛马娘,哈牛魔,叮咚鸡,活全家,胖宝宝,小白手套,诗歌剧,核酸,踩踩背,东海帝王,猫,米基哈,基米哈,耄耋,猫爹,猫咪,哈气,应激,大狗叫,圆头,喵星人,爱猫tv,爱猫,Doro,踩背,爱猫fm,哈基米fm,哈吉米">
+    <meta name="description" content="哈基米,曼波,鬼畜,私人音乐,赛马娘,哈牛魔,叮咚鸡,活全家,胖宝宝,小白手套,诗歌剧,踩踩背,东海帝王,猫,米基哈,基米哈,耄耋,猫爹,猫咪,哈气,大狗叫,圆头,喵星人,爱猫tv,爱猫,踩背,爱猫fm,哈基米fm,哈吉米">
     
     <script defer src="https://0721umami.icu/random-string.js" data-website-id="87ef31e4-1aeb-4499-9710-b60df1bb26bf"></script><!--网站统计-->
     
@@ -253,6 +465,12 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_total') {
             <button id="add-button" class="mdui-btn mdui-btn-icon mdui-ripple mdui-ripple-white" mdui-tooltip="{content: '添加视频'}">
                 <i class="mdui-icon material-icons">add</i>
             </button>
+            
+            <!-- 批量添加按钮 -->
+            <button id="batch-add-button" class="mdui-btn mdui-btn-icon mdui-ripple mdui-ripple-white" mdui-tooltip="{content: '批量添加'}">
+                <i class="mdui-icon material-icons">playlist_add</i>
+            </button>
+            
             <!-- 关于网站 -->
             <button class="mdui-btn mdui-btn-icon mdui-ripple mdui-ripple-white" mdui-dialog="{target: '#gy-dialog'}" mdui-tooltip="{content: '关于网站'}">
                 <i class="mdui-icon material-icons">perm_contact_calendar</i>
@@ -391,6 +609,52 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_total') {
     </div>
     <!--添加视频对话框结束-->
     
+    <!--批量添加视频对话框开始-->
+    <div class="mdui-dialog" id="batch-add-dialog">
+        <div class="mdui-dialog-title">批量添加哔站视频</div>
+        <div class="mdui-dialog-content">
+            <form id="batch-add-form" method="POST">
+                <div class="mdui-textfield mdui-textfield-floating-label">
+                    <label class="mdui-textfield-label">请输入哔站收藏夹ID或链接</label>
+                    <input class="mdui-textfield-input" type="text" name="favorite_id" required/>
+                    <div class="mdui-textfield-error">请输入有效的哔站收藏夹ID</div>
+                    <span class="mdui-textfield-helper">例如: 3681188610</span>
+                </div>
+            </form>
+        </div>
+        <div class="mdui-dialog-actions">
+            <button class="mdui-btn mdui-ripple" id="batch-cancel-button">取消</button>
+            <button class="mdui-btn mdui-ripple mdui-color-pink" id="batch-submit-button" type="button">批量添加</button>
+        </div>
+    </div>
+    <!--批量添加视频对话框结束-->
+    
+    <!--批量添加进度对话框开始-->
+    <div class="mdui-dialog" id="batch-progress-dialog">
+        <div class="mdui-dialog-title">批量添加进度</div>
+        <div class="mdui-dialog-content">
+            <div id="progress-container">
+                <div class="mdui-progress">
+                    <div class="mdui-progress-determinate" id="progress-bar" style="width: 0%"></div>
+                </div>
+                </br>
+                <div id="progress-text">准备开始...</div></br>
+                <div id="progress-details">
+                    <div>总视频数: <span id="progress-total">0</span></div></br>
+                    <div>已处理: <span id="progress-processed">0</span></div></br>
+                    <div>成功添加: <span id="progress-added">0</span></div></br>
+                    <div>已跳过: <span id="progress-skipped">0</span></div></br>
+                    <div>错误: <span id="progress-errors">0</span></div></br>
+                    <div>当前视频: <span id="progress-current">-</span></div></br>
+                </div>
+            </div>
+        </div>
+        <div class="mdui-dialog-actions">
+            <button class="mdui-btn mdui-ripple" id="progress-close-button" style="display:none;">关闭</button>
+        </div>
+    </div>
+    <!--批量添加进度对话框结束-->
+    
     <!--搜索对话框开始-->
     <div class="mdui-dialog" id="search-dialog">
         <div class="mdui-dialog-title">搜索视频</div>
@@ -417,12 +681,14 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_total') {
         <h3>网站做着玩的，大家不要发表奇奇怪怪的评论，比如月抛涉政之类的，看到的话我会删，其他涉黄无所谓。</h3></br>
         <mark>2025年7月22日：网站初步完成，能正常添加哔站视频、日夜模式切换、完成了搜索功能。</mark></br>
         <mark>2025年7月23日：卡片的右上角显示每个视频在网站的评论数量、视频置顶功能(需要在数据库设置)、点击出视频详情能播放视频。</mark></br>
-        <p>下一步：使添加的视频能自动播放，播放完一个自动播放下一个，就像哔站的“播放全部”一样。ps:可能会很难，但是也不是不能实现</p></br>
+        <mark>2025年9月08日：批量添加哔站收藏夹视频。</mark></br>
+        <p>下一步：使添加的视频能自动播放，播放完一个自动播放下一个，就像哔站的"播放全部"一样。ps:可能会很难，但是也不是不能实现</p></br>
       </div>
       <div class="mdui-dialog-actions">
         <button class="mdui-btn mdui-ripple" onclick="window.location.href='https://nn0721.icu'">0721_Galgame</button>
         <button class="mdui-btn mdui-ripple" onclick="window.location.href='https://dm0721.icu'">0721_动漫</button>
         <button class="mdui-btn mdui-ripple" onclick="window.location.href='https://lt0721.icu'">0721_论坛</button>
+        <button class="mdui-btn mdui-ripple" onclick="window.location.href='https://github.com/mingrixiangnai/mijiha'">开源代码</button>
         <button class="mdui-btn mdui-ripple" onclick="window.location.href='https://0721umami.icu/share/bhRBEczFlxAeN5Tk/mijiha.icu'">网站统计</button>
       </div>
     </div>
