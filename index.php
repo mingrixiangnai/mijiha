@@ -640,6 +640,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_total') {
                 </br>
                 <div id="progress-text">准备开始...</div></br>
                 <div id="progress-details">
+                    <div style="color: red;">添加中....添加过程请勿刷新网页，添加结束之后再刷新</div></br>
                     <div>总视频数: <span id="progress-total">0</span></div></br>
                     <div>已处理: <span id="progress-processed">0</span></div></br>
                     <div>成功添加: <span id="progress-added">0</span></div></br>
